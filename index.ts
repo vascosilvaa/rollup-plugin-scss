@@ -5,6 +5,7 @@ import { createFilter, CreateFilter } from 'rollup-pluginutils'
 import type { Plugin } from 'rollup'
 
 export interface CSSPluginOptions {
+  id?: string
   exclude?: Parameters<CreateFilter>[1]
   failOnError?: boolean
   include?: Parameters<CreateFilter>[0]
@@ -226,14 +227,11 @@ export default function scss(options: CSSPluginOptions = {}): Plugin {
 
       if (options.insert === true) {
         // When the 'insert' is enabled, the stylesheet will be inserted into <head/> tag.
-        const { css, map } = await compileToCSS(code)
+        const { css } = await compileToCSS(code)
         return {
-          code:
-            'export default ' +
-            insertStyleFnName +
-            '(' +
-            JSON.stringify(css) +
-            ')',
+          code: `export default ${insertStyleFnName}(${JSON.stringify(css)}, ${
+            id ? JSON.stringify(options.id) : undefined
+          })`,
           map: { mappings: '' }
         }
       } else if (options.output === false) {
@@ -324,7 +322,7 @@ export default function scss(options: CSSPluginOptions = {}): Plugin {
  * @param {String} css style
  * @return {String} css style
  */
-const insertStyleFn = `function insertStyleFn(css) {
+const insertStyleFn = `function insertStyleFn(css, id) {
   if (!css) {
     return
   }
@@ -332,8 +330,13 @@ const insertStyleFn = `function insertStyleFn(css) {
     return
   }
 
+  if(id && document.getElementById(id)) {
+    return;
+  }
+
   const style = document.createElement('style');
 
+  if(id) style.setAttribute('id', id);
   style.setAttribute('type', 'text/css');
   style.innerHTML = css;
   document.head.appendChild(style);
